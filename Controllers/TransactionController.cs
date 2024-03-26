@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Expense_Tracker.Models;
+using SQLitePCL;
 
 namespace Expense_Tracker.Controllers
 {
@@ -26,10 +27,18 @@ namespace Expense_Tracker.Controllers
         }
 
         // GET: Transaction/AddOrEdit
-        public IActionResult AddOrEdit()
+        public IActionResult AddOrEdit(int id=0)
         {
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId");
-            return View();
+            PopulateCategories();
+            if(id == 0) 
+            {
+                return View(new Transaction());
+            }
+            else
+            {
+                return View(_context.Transactions.Find(id));
+            }
+            
         }
 
         // POST: Transaction/AddOrEdit
@@ -41,11 +50,19 @@ namespace Expense_Tracker.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Add(transaction);
+                if (transaction.TransactionId == 0)
+                {
+                    _context.Add(transaction);
+                }
+                else
+                {
+                    _context.Update(transaction);
+                }
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
+
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", transaction.CategoryId);
+            PopulateCategories();
             return View(transaction);
         }
 
@@ -64,9 +81,19 @@ namespace Expense_Tracker.Controllers
             {
                 _context.Transactions.Remove(transaction);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+
+        [NonAction]
+        public void PopulateCategories()
+        {
+            var CategoryCollection = _context.Categories.ToList();
+            Category DefaultCategory = new Category() { CategoryId = 0, Title = "Choose a Category" };
+            CategoryCollection.Insert(0, DefaultCategory);
+            ViewBag.Categories = CategoryCollection;
         }
     }
 }
